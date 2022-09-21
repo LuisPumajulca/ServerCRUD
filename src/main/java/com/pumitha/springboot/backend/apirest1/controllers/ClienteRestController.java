@@ -1,13 +1,19 @@
 package com.pumitha.springboot.backend.apirest1.controllers;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+
+import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -55,10 +61,26 @@ public class ClienteRestController {
 	}
 	
 	@PostMapping("/clientes")
-	public ResponseEntity<?> create(@RequestBody Cliente cliente) {
+	public ResponseEntity<?> create(@Valid @RequestBody Cliente cliente, BindingResult result) {
 		
 		Cliente clienteNew = null;
 		Map<String, Object> response = new HashMap<>();
+		
+		if(result.hasErrors()) {			
+			/*List<String> errors = new ArrayList<>();
+			for(FieldError err: result.getFieldErrors()) {
+				errors.add("El campo '"+err.getField()+"' "+ err.getDefaultMessage());
+			}*/
+			List<String> errors = result.getFieldErrors()
+					.stream()
+					.map(err -> {
+						return "El campo '"+err.getField()+"' "+ err.getDefaultMessage();
+					})
+					.collect(Collectors.toList());
+			
+			response.put("errors", errors);
+			return new ResponseEntity<Map<String, Object>>(response, HttpStatus.BAD_REQUEST);
+		}
 		
 		try {
 			clienteNew = clienteService.save(cliente);
@@ -74,11 +96,23 @@ public class ClienteRestController {
 	
 	@PutMapping("/clientes/{id}")
 	@ResponseStatus(HttpStatus.CREATED)
-	public ResponseEntity<?> update(@RequestBody Cliente cliente, @PathVariable Long id) {
+	public ResponseEntity<?> update(@Valid @RequestBody Cliente cliente, BindingResult result, @PathVariable Long id) {
 		Cliente clienteActual = clienteService.findById(id);
 		
 		Cliente clienteUpdated = null;
 		Map<String, Object> response = new HashMap<>();
+		
+		if(result.hasErrors()) {			
+			List<String> errors = result.getFieldErrors()
+					.stream()
+					.map(err -> {
+						return "El campo '"+err.getField()+"' "+ err.getDefaultMessage();
+					})
+					.collect(Collectors.toList());
+			
+			response.put("errors", errors);
+			return new ResponseEntity<Map<String, Object>>(response, HttpStatus.BAD_REQUEST);
+		}
 		
 		if(clienteActual == null) {
 			response.put("mensaje", "Error: no se pudo editar, el cliente ID: ".concat(id.toString().concat(" no existe en la base de datos!")));
@@ -104,7 +138,6 @@ public class ClienteRestController {
 	}
 	
 	@DeleteMapping("/clientes/{id}")
-	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public ResponseEntity<?> delete(@PathVariable Long id) {
 		Map<String, Object> response = new HashMap<>();
 		
@@ -118,6 +151,6 @@ public class ClienteRestController {
 		
 		response.put("mensaje", "El cliente ha sido eliminado con éxito!");
 
-		return new ResponseEntity<Map<String, Object>>(response, HttpStatus.CREATED);
+		return new ResponseEntity<Map<String, Object>>(response, HttpStatus.OK);
 	}
 }
